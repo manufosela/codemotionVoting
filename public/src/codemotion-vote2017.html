@@ -1,0 +1,190 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer/app-drawer.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer-layout/app-drawer-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-header/app-header.html">
+<link rel="import" href="../bower_components/app-layout/app-header-layout/app-header-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-scroll-effects/app-scroll-effects.html">
+<link rel="import" href="../bower_components/app-layout/app-toolbar/app-toolbar.html">
+<link rel="import" href="../bower_components/app-route/app-location.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/iron-selector/iron-selector.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="my-icons.html">
+
+<link rel="lazy-import" href="vote.html">
+<link rel="lazy-import" href="results.html">
+<link rel="lazy-import" href="my-view404.html">
+
+<dom-module id="codemotion-vote2017">
+  <template>
+    <style>
+      :host {
+        --app-primary-color: #F0D955;
+        --app-secondary-color: black;
+
+        display: block;
+      }
+
+      app-drawer-layout:not([narrow]) [drawer-toggle] {
+        display: none;
+      }
+
+      app-header {
+        color: #00f;
+        background-color: var(--app-primary-color);
+      }
+
+      app-header paper-icon-button {
+        --paper-icon-button-ink-color: white;
+      }
+
+      .drawer-list {
+        margin: 0 20px;
+      }
+
+      .drawer-list a {
+        display: block;
+        padding: 0 16px;
+        text-decoration: none;
+        color: var(--app-secondary-color);
+        line-height: 40px;
+      }
+
+      .drawer-list a.iron-selected {
+        color: black;
+        font-weight: bold;
+      }
+
+      .login {
+        font-size: 0.8rem;
+        background: #23F;
+        color: #FF0;
+        font-weight: bold;
+      }
+    </style>
+
+    <firebase-app
+      auth-domain="codemotion2017.firebaseapp.com"
+      database-url="https://codemotion2017.firebaseio.com/"
+      api-key="AIzaSyD-s4-8mXixfjCoPbSQQJL1M-dE-byxTbA"
+      storage-bucket="codemotion2017.appspot.com"
+      messaging-sender-id="888075941243",
+      project-id="codemotion2017">
+    </firebase-app>
+    <firebase-auth id="auth" user="{{user}}" provider="google" on-error="handleError"></firebase-auth>
+
+    <app-location route="{{route}}"></app-location>
+    <app-route
+        route="{{route}}"
+        pattern="[[rootPattern]]:page"
+        data="{{routeData}}"
+        tail="{{subroute}}"></app-route>
+
+    <app-drawer-layout fullbleed>
+      <!-- Drawer content -->
+      <app-drawer id="drawer" slot="drawer">
+        <app-toolbar>Menu</app-toolbar>
+        <template is="dom-if" if="[[user]]">
+          <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
+            <a name="vote" href="/vote">Vote</a>
+            <a name="results" href="/results">Results</a>
+          </iron-selector>
+        </template>
+      </app-drawer>
+
+      <!-- Main content -->
+      <app-header-layout has-scrolling-region>
+
+        <app-header slot="header" condenses reveals effects="waterfall">
+          <app-toolbar>
+            <paper-icon-button icon="my-icons:menu" drawer-toggle></paper-icon-button>
+            <div main-title>Codemotion 2017 - Vote</div>
+            <paper-button class="login" raised on-tap="login" hidden$="[[user]]">Sign In</paper-button>
+            <paper-button class="login" raised on-tap="logout" hidden$="[[!user]]">Sign Out</paper-button>
+          </app-toolbar>
+        </app-header>
+
+        <template is="dom-if" if="[[user]]">
+          <h1>Bienvenido [[user.displayName]]</h1>
+        
+          <iron-pages
+              selected="[[page]]"
+              attr-for-selected="name"
+              fallback-selection="view404"
+              role="main">
+            <my-view1 name="vote"></my-view1>
+            <my-view2 name="results"></my-view2>
+            <my-view404 name="view404"></my-view404>
+          </iron-pages>
+        </template>
+      </app-header-layout>
+    </app-drawer-layout>
+  </template>
+
+  <script>
+    class CodemotionVote2017 extends Polymer.Element {
+
+      static get is() { return 'codemotion-vote2017'; }
+
+      static get properties() {
+        return {
+          page: {
+            type: String,
+            reflectToAttribute: true,
+            observer: '_pageChanged',
+          },
+          rootPattern: String,
+          routeData: Object,
+          subroute: String,
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routePageChanged(routeData.page)',
+        ];
+      }
+
+      constructor() {
+        super();
+        this.rootPattern = (new URL(this.rootPath)).pathname;
+      }
+
+      login() {
+        return this.$.auth.signInWithPopup();
+      }
+
+      logout() {
+        return this.$.auth.signOut();
+      }
+
+      _routePageChanged(page) {
+        if (page === undefined) {
+          console.log('page undefined');
+          return;
+        }
+        this.page = page || 'vote';
+        if (!this.$.drawer.persistent) {
+          this.$.drawer.close();
+        }
+      }
+
+      _pageChanged(page) {
+        var resolvedPageUrl = this.resolveUrl(page + '.html');
+        Polymer.importHref(
+            resolvedPageUrl,
+            null,
+            this._showPage404.bind(this),
+            true);
+      }
+
+      _showPage404() {
+        this.page = 'view404';
+      }
+    }
+
+    window.customElements.define(CodemotionVote2017.is, CodemotionVote2017);
+  </script>
+</dom-module>

@@ -1,0 +1,87 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymerfire/polymerfire.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="my-view2">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+        padding: 10px;
+      }
+      table { 
+		width: 100%; 
+		border-collapse: collapse; 
+	}
+	/* Zebra striping */
+	tr:nth-of-type(odd) { 
+		background: #eee; 
+	}
+	th { 
+		background: #333; 
+		color: white; 
+		font-weight: bold; 
+	}
+	td, th { 
+		padding: 6px; 
+		border: 1px solid #ccc; 
+		text-align: left; 
+	}
+
+    </style>
+   
+    <!-- https://codemotion2017.firebaseio.com/charlas.json?auth=FFlrahDkJWTjlpfbk3CBquAt1TscwrA68HuQUsLj -->
+    <firebase-document
+        path="/charlas"
+        data="{{charlas}}">
+    </firebase-document>
+
+    <div class="card">
+      <div class="circle">2</div>
+      <h1>Resultados</h1>
+      <template is="dom-if" if="{{!charlas.length}}">
+        Cargando charlas...
+      </template>
+      <template is="dom-if" if="{{charlas.length}}">
+        <table>
+        <template is="dom-repeat" items="{{charlas}}" as="charla">
+          <tr><td>{{charla.Titulo}}</td><td>{{charla.Votos}}</td></tr>
+        </template>
+        </table>
+      </template>
+    </div>
+  </template>
+
+  <script>
+    class MyView2 extends Polymer.Element {
+      static get is() { return 'my-view2'; }
+
+      static get properties() {
+        return {
+          charlas: {
+            type: Object,
+            observer: 'dataChanged'
+          }
+        }
+      }
+
+      dataChanged(newData, oldData) {
+        // do something when the query returns values
+        //console.log(newData, oldData);
+      }
+
+    }
+
+    window.customElements.define(MyView2.is, MyView2);
+  </script>
+</dom-module>

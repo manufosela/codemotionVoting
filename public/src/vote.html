@@ -1,0 +1,80 @@
+<!--
+@license
+Copyright (c) 2016 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/cvitaede-starsrating/cvitaede-starsrating.html">
+<link rel="import" href="shared-styles.html">
+
+<dom-module id="my-view1">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: block;
+
+        padding: 10px;
+      }
+      .autor { color:#F30;}
+    </style>
+
+    <firebase-document
+      path="/charlas/[[charlaId]]"
+      data="{{charla}}">
+    </firebase-document>
+
+    <div class="card">
+      <h1>Votaciones Codemotion 2017</h1>  
+      <div>Charla [[charlaNum]] de 514</div> 
+      <!-- https://codemotion2017.firebaseio.com/charlas.json?auth=FFlrahDkJWTjlpfbk3CBquAt1TscwrA68HuQUsLj -->
+
+      <template is="dom-if" if="{{!charla}}">
+        Cargando siguiente charla...
+      </template>
+      <template is="dom-if" if="{{charla}}">
+        <h3>{{charla.Titulo}} de <span class="autor">{{charla.Autor}}</span></h3>
+        <div>{{charla.Descripcion}}</div>
+        <cvitaede-starsrating num-stars="5" mode="manual"></cvitaede-starsrating></td></tr>
+      </template> 
+    </div>
+  </template>
+
+  <script>
+    class MyView1 extends Polymer.Element {
+      static get is() { return 'my-view1'; }
+
+      static get properties() {
+        return {
+          charlaId: {
+            type: Number,
+            value: 0,
+            observer: '_calcCharlaNum'
+          },
+          charlaNum: Number
+        };
+      }
+
+      _calcCharlaNum() {
+        this.charlaNum = this.charlaId + 1;
+      }
+
+      connectedCallback() { 
+        super.connectedCallback();
+        Polymer.RenderStatus.afterNextRender(this, function() {
+          this.root.querySelector('cvitaede-starsrating').addEventListener('click', e => {
+            // TODO: UPDATE VOTO CHARLA
+            this.charlaId++;
+            e.target.reset();
+          });
+        });
+      }
+    }
+
+    window.customElements.define(MyView1.is, MyView1);
+  </script>
+</dom-module>

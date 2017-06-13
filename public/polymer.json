@@ -1,0 +1,21 @@
+{
+  "entrypoint": "index.html",
+  "shell": "src/codemotion-vote2017.html",
+  "fragments": [
+    "src/vote.html",
+    "src/results.html",
+    "src/my-view404.html"
+  ],
+  "sources": [
+    "src/**/*",
+    "images/**/*",
+    "bower.json"
+  ],
+  "extraDependencies": [
+    "manifest.json",
+    "bower_components/webcomponentsjs/*.js"
+  ],
+  "lint": {
+    "rules": ["polymer-2"]
+  }
+}
