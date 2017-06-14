@@ -21,6 +21,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         padding: 10px;
       }
       .autor { color:#F30;}
+
+      cvitaede-starsrating {
+        --star-color:#F00;
+      }
     </style>
 
     <firebase-document
@@ -29,18 +33,36 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     </firebase-document>
 
     <div class="card">
-      <h1>Votaciones Codemotion 2017</h1>  
-      <div>Charla [[charlaNum]] de 514</div> 
-      <!-- https://codemotion2017.firebaseio.com/charlas.json?auth=FFlrahDkJWTjlpfbk3CBquAt1TscwrA68HuQUsLj -->
+      <h1>Votaciones Codemotion 2017</h1>
+      <template is="dom-if" if="{{!voteFinish}}">
+        <div>Charla [[charlaNum]] de 514</div> 
+        <!-- https://codemotion2017.firebaseio.com/charlas.json?auth=FFlrahDkJWTjlpfbk3CBquAt1TscwrA68HuQUsLj -->
 
-      <template is="dom-if" if="{{!charla}}">
-        Cargando siguiente charla...
+        <template is="dom-if" if="{{!charla}}">
+          Cargando siguiente charla...
+        </template>
+        <template is="dom-if" if="{{charla}}">
+          <cvitaede-starsrating num-stars="5" mode="manual"></cvitaede-starsrating></td></tr>
+          <h3>{{charla.Titulo}} de <span class="autor">{{charla.Autor}}</span></h3>
+          <div>{{charla.Descripcion}}</div>
+        </template> 
       </template>
-      <template is="dom-if" if="{{charla}}">
-        <h3>{{charla.Titulo}} de <span class="autor">{{charla.Autor}}</span></h3>
-        <div>{{charla.Descripcion}}</div>
-        <cvitaede-starsrating num-stars="5" mode="manual"></cvitaede-starsrating></td></tr>
-      </template> 
+      <template is="dom-if" if="{{voteFinish}}">
+        <h2>Votación finalizada</h2>
+        <template is="dom-if" if="{{!votesSaved}}">
+          <template is="dom-if" if="{{votesError}}">
+            <h3>No has votado todas las charlas aún</h3>
+          </template>
+          <template is="dom-if" if="{{!votesError}}">
+            <h3>Procesando tus votos...</h3>
+          </template>
+        </template>
+        <template is="dom-if" if="{{votesSaved}}">
+          <h3>Tus votos han sido guardados. Gracias por colaborar</h3>
+        </template>
+      </template>
+
+      </template>
     </div>
   </template>
 
@@ -52,24 +74,87 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         return {
           charlaId: {
             type: Number,
-            value: 0,
+            value: function(){
+              var hash = document.location.hash.replace('#/','');
+              return parseInt(hash-1);
+            },
             observer: '_calcCharlaNum'
           },
-          charlaNum: Number
+          charlaNum: Number,
+          voteFinish: {
+            type: Boolean,
+            value: false
+          },
+          votesSaved: {
+            type: Boolean,
+            value: false
+          },
+          votesError: {
+            type: Boolean,
+            value: false
+          }
         };
       }
 
       _calcCharlaNum() {
         this.charlaNum = this.charlaId + 1;
+        if (this.charlaNum > 514) {
+          this.voteFinish = true;
+          document.location.hash='';
+          this._calcVotes();
+        } else {
+          document.location.hash='/'+this.charlaNum;
+        }
       }
 
       connectedCallback() { 
         super.connectedCallback();
         Polymer.RenderStatus.afterNextRender(this, function() {
-          this.root.querySelector('cvitaede-starsrating').addEventListener('click', e => {
+          var starsRating = this.root.querySelector('cvitaede-starsrating');
+          starsRating.addEventListener('click', e => {
             // TODO: UPDATE VOTO CHARLA
-            this.charlaId++;
-            e.target.reset();
+            var updates = {};
+            var email = this.user.email.replace(/[@\.]/g,"_");
+            updates['/pre-charlas/' + email + '/' + this.charlaId] = starsRating.rating;
+            firebase.database().ref().update(updates);
+            // Next Charla
+            var target = e.target; 
+            setTimeout( () => {
+              this.charlaId++;
+              target.reset();
+            }, 300);
+          });
+        });
+      }
+
+      _calcVotes() {
+        var email = this.user.email.replace(/[@\.]/g,"_");
+        firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
+          var charlas = snapshot.val();
+          firebase.database().ref().child('pre-charlas/' + email).once('value').then( (snapshot) => {
+            var preCharlas =snapshot.val();
+            if (preCharlas.length===charlas.lentgth) {
+              for(var k in charlas) {
+                if (preCharlas[k]>0 && preCharlas[k]<6) {
+                  charlas[k].Votos += preCharlas[k];
+                } else {
+                  this.votesSaved = false;
+                  this.votesError = true;
+                  return;
+                }
+              }
+              var updates = {};
+              updates['/charlas'] = charlas;
+              firebase.database().ref().update(updates).then( ()=> {
+                console.log('votes updated');
+                this.votesSaved = true;
+                this.votesError = false;
+                firebase.database().ref('/pre-charlas/' + email).remove();
+              });
+            } else {
+              this.votesSaved = false;
+              this.votesError = true;
+            }
           });
         });
       }
