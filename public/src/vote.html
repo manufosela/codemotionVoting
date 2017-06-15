@@ -36,8 +36,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       <h1>Votaciones Codemotion 2017</h1>
       <template is="dom-if" if="{{!voteFinish}}">
         <div>Charla [[charlaNum]] de [[_numCharlas]]</div> 
-        <!-- https://codemotion2017.firebaseio.com/charlas.json?auth=FFlrahDkJWTjlpfbk3CBquAt1TscwrA68HuQUsLj -->
-
         <template is="dom-if" if="{{!charla}}">
           Cargando siguiente charla...
         </template>
@@ -77,7 +75,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             value: function(){
               var hash = document.location.hash.replace('#/','');
               if(hash=="" || hash<1) { hash=1; }
-              return parseInt(hash-1);
+              return (hash==='finished')?hash:this._checkCharlaId(parseInt(hash-1));
             },
             observer: '_calcCharlaNum'
           },
@@ -100,45 +98,92 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           _numCharlas: {
             type: Number,
             value: 0
-          }
-        };
+          },
+          _email: String
+        }
       }
 
       constructor() {
         super();
+        if (!this.user) {
+          console.log('sin user');
+        } else {
+          this._email = this.user.email.replace(/[@\.]/g,"_");
+        }
         firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
           this._numCharlas =snapshot.val().length;
+          this._calcCharlaNum();
         });
+        window.onhashchange = () => {
+          if (document.location.hash!='#/finished') {
+            this._ctrlIfUserHasVoted();
+            this.charlaId = this._checkCharlaId(parseInt(document.location.hash.replace('#/','')) - 1);
+          }
+        }
+      }
+
+      _checkCharlaId(value) {
+        if (!value) { value=0; }
+        if (value>this._numCharlas) { value=this._numCharlas-1; }
+        if (value<0) { value=0; }
+        if (value==0) { 
+          firebase.database().ref().child('/pre-charlas/'+this._email).once('value').then( (snapshot) => {
+            var votos = snapshot.val();
+            console.log(Math.max(...votos));
+          });
+        }
+        return value;
       }
 
       _calcCharlaNum() {
         this.charlaNum = this.charlaId + 1;
-        if (this.charlaNum > this._numCharlas) {
+        if (this.charlaNum > this._numCharlas && this._numCharlas !== 0) {
           this.voteFinish = true;
-          document.location.hash='';
+          document.location.hash='/finished';
           this._calcVotes();
         } else {
-          document.location.hash='/'+this.charlaNum;
+          this.voteFinish = false;
+          if (this.charlNum!=this._numCharlas) {
+            document.location.hash='/'+this.charlaNum;
+          }
         }
       }
 
       connectedCallback() { 
         super.connectedCallback();
         Polymer.RenderStatus.afterNextRender(this, function() {
-          var starsRating = this.root.querySelector('cvitaede-starsrating');
-          starsRating.addEventListener('click', e => {
-            // TODO: UPDATE VOTO CHARLA
-            var updates = {};
-            var email = this.user.email.replace(/[@\.]/g,"_");
-            updates['/pre-charlas/' + email + '/' + this.charlaId] = starsRating.rating;
-            firebase.database().ref().update(updates);
-            // Next Charla
-            var target = e.target; 
-            setTimeout( () => {
-              this.charlaId++;
-              target.reset();
-            }, 300);
-          });
+          this._ctrlIfUserHasVoted();
+          if (!this.voteFinish) {
+            this._ctrlStarsVotes();
+          }
+        });
+      }
+
+      _ctrlIfUserHasVoted() {
+        var email = this.user.email.replace(/[@\.]/g,"_");
+        firebase.database().ref().child('/users-voted/'+email).once('value').then( (snapshot) => {
+          var email = snapshot.val();
+          if (email && email.length > 0) {
+            this.voteFinish = true;
+            this.votesSaved = true;
+          }
+        });
+      }
+
+      _ctrlStarsVotes() {
+        var starsRating = this.root.querySelector('cvitaede-starsrating');
+        starsRating.addEventListener('click', e => {
+          // TODO: UPDATE VOTO CHARLA
+          var updates = {};
+          var email = this.user.email.replace(/[@\.]/g,"_");
+          updates['/pre-charlas/' + email + '/' + this.charlaId] = starsRating.rating;
+          firebase.database().ref().update(updates);
+          // Next Charla
+          var target = e.target; 
+          setTimeout( () => {
+            this.charlaId++;
+            target.reset();
+          }, 300);
         });
       }
 
@@ -146,31 +191,37 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         var email = this.user.email.replace(/[@\.]/g,"_");
         firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
           var charlas = snapshot.val();
-          firebase.database().ref().child('pre-charlas/' + email).once('value').then( (snapshot) => {
-            var preCharlas =snapshot.val();
-            if (preCharlas.length===charlas.lentgth) {
-              for(var k in charlas) {
-                if (preCharlas[k]>0 && preCharlas[k]<6) {
-                  charlas[k].Votos += preCharlas[k];
-                } else {
-                  this.votesSaved = false;
-                  this.votesError = true;
-                  return;
+          if (this.voteFinish) {
+            firebase.database().ref().child('pre-charlas/' + email).once('value').then( (snapshot) => {
+              var preCharlas =snapshot.val();
+              if (preCharlas && preCharlas.length===charlas.length) {
+                for(var k in charlas) {
+                  if (preCharlas[k]>0 && preCharlas[k]<6) {
+                    charlas[k].Votos += preCharlas[k];
+                  } else {
+                    this.votesSaved = false;
+                    this.votesError = true;
+                    return;
+                  }
                 }
+                var updates = {};
+                updates['/charlas'] = charlas;
+                firebase.database().ref().update(updates).then( ()=> {
+                  console.log('votes updated');
+                  firebase.database().ref('/pre-charlas/').child(email).once('value').then( (snapshot) => { 
+                    var preCharlas = snapshot.val();
+                    firebase.database().ref('/users-voted/' + email).set(preCharlas);
+                    firebase.database().ref('/pre-charlas/' + email).remove();
+                    this.votesSaved = true;
+                    this.votesError = false;
+                  });
+                });
+              } else {
+                this.votesSaved = false;
+                this.votesError = true;
               }
-              var updates = {};
-              updates['/charlas'] = charlas;
-              firebase.database().ref().update(updates).then( ()=> {
-                console.log('votes updated');
-                this.votesSaved = true;
-                this.votesError = false;
-                firebase.database().ref('/pre-charlas/' + email).remove();
-              });
-            } else {
-              this.votesSaved = false;
-              this.votesError = true;
-            }
-          });
+            });
+          }
         });
       }
     }
