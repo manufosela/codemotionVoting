@@ -10,6 +10,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
 <link rel="import" href="../bower_components/cvitaede-starsrating/cvitaede-starsrating.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
 <link rel="import" href="shared-styles.html">
 
 <dom-module id="my-view1">
@@ -21,6 +22,27 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         padding: 10px;
       }
       .autor { color:#F30;}
+      .flexlayer { display:flex; justify-content: center; }
+      .flexlayer > * { align-self: center; }
+
+      .charladesc {
+        overflow: auto;
+        max-height: 200px;
+      }
+      paper-button.indigo {
+        background-color: var(--paper-indigo-500);
+        color: white;
+        --paper-button-raised-keyboard-focus: {
+          background-color: var(--paper-pink-a200) !important;
+          color: white !important;
+        };
+        margin: 20px;
+        padding: 0;
+        min-width: 2.5em;
+      }
+      paper-button.indigo:hover {
+        background-color: var(--paper-indigo-400);
+      }
 
       cvitaede-starsrating {
         --star-color:#F00;
@@ -33,16 +55,27 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     </firebase-document>
 
     <div class="card">
-      <h1>Votaciones Codemotion 2017</h1>
       <template is="dom-if" if="{{!voteFinish}}">
-        <div>Charla [[charlaNum]] de [[_numCharlas]]</div> 
+        <div class="flexlayer">
+          <paper-button on-tap="prev" raised class="indigo"> &lt; </paper-button>
+          <div>Charla [[charlaNum]] de [[_numCharlas]]</div>        
+          <paper-button on-tap="next" raised class="indigo"> &gt; </paper-button>
+        </div>
         <template is="dom-if" if="{{!charla}}">
           Cargando siguiente charla...
         </template>
         <template is="dom-if" if="{{charla}}">
-          <cvitaede-starsrating num-stars="5" mode="manual"></cvitaede-starsrating></td></tr>
-          <h3>{{charla.Titulo}} de <span class="autor">{{charla.Autor}}</span></h3>
-          <div>{{charla.Descripcion}}</div>
+          <div class="flexlayer">
+            <div class="flex1">Tu voto:</div>
+            <cvitaede-starsrating num-stars="5" mode="manual"></cvitaede-starsrating>
+          </div>
+          <h3>{{charla.Titulo}} <span>de</span> <span class="autor">{{charla.Autor}}</span></h3>
+          <h6>
+            Tipo: <span class="autor">{{charla.Proposal_format}}</span> 
+            Lenguajes: <span class="autor">{{charla.Programming_language}}</span>
+            Nivel: <span class="autor">{{charla.Level}}</span>
+          </h6>
+          <div class="charladesc">{{charla.Descripcion}}</div>
         </template> 
       </template>
       <template is="dom-if" if="{{voteFinish}}">
@@ -105,11 +138,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       constructor() {
         super();
-        if (!this.user) {
-          console.log('sin user');
-        } else {
-          this._email = this.user.email.replace(/[@\.]/g,"_");
-        }
         firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
           this._numCharlas =snapshot.val().length;
           this._calcCharlaNum();
@@ -121,17 +149,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           }
         }
       }
+      
+      prev() {
+        this.charlaId--;
+      }
+
+      next() {
+        this.charlaId++;
+      }
 
       _checkCharlaId(value) {
         if (!value) { value=0; }
         if (value>this._numCharlas) { value=this._numCharlas-1; }
         if (value<0) { value=0; }
-        if (value==0) { 
-          firebase.database().ref().child('/pre-charlas/'+this._email).once('value').then( (snapshot) => {
-            var votos = snapshot.val();
-            console.log(Math.max(...votos));
-          });
-        }
         return value;
       }
 
@@ -156,6 +186,17 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           if (!this.voteFinish) {
             this._ctrlStarsVotes();
           }
+
+          var email = this.user.email.replace(/[@\.]/g,"_");
+          console.log(email);
+          firebase.database().ref('/pre-charlas').child(email).once('value').then( (snapshot) => {
+            var votos = Object.keys(snapshot.val());
+            if (votos) {
+              var lastCharlaVoted = Math.max(...votos) + 1;
+              this.charlaId=lastCharlaVoted;
+              console.log(lastCharlaVoted);
+            }
+          });
         });
       }
 

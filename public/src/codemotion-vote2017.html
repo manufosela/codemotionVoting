@@ -100,15 +100,16 @@
         <app-header slot="header" condenses reveals effects="waterfall">
           <app-toolbar>
             <paper-icon-button icon="my-icons:menu" drawer-toggle></paper-icon-button>
-            <div main-title>Codemotion 2017 - Vote</div>
-            <paper-button class="login" raised on-tap="login" hidden$="[[user]]">Sign In</paper-button>
-            <paper-button class="login" raised on-tap="logout" hidden$="[[!user]]">Sign Out</paper-button>
+            <div main-title>Codemotion 2017 - Votaciones</div>
+            <div>
+              <paper-button class="login" raised on-tap="login" hidden$="[[user]]">Sign In</paper-button>
+              <paper-button class="login" raised on-tap="logout" hidden$="[[!user]]">Sign Out</paper-button>
+            </div>
           </app-toolbar>
+          [[user.displayName]]
         </app-header>
 
         <template is="dom-if" if="[[user]]">
-          <h1>Bienvenido [[user.displayName]]</h1>
-        
           <iron-pages
               selected="[[page]]"
               attr-for-selected="name"
@@ -118,6 +119,10 @@
             <my-view2 name="results"></my-view2>
             <my-view404 name="view404"></my-view404>
           </iron-pages>
+        </template>
+        <template is="dom-if" if="[[!user]]">
+          <p>Es necesario identificarse con un correo electronico para poder acceder a la votación del Codemotion 2017</p>
+          <p>Para que los votos se contabilicen es necesario votar las 514 charlar propuestas</p>
         </template>
       </app-header-layout>
     </app-drawer-layout>
