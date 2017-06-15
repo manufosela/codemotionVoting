@@ -35,7 +35,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <div class="card">
       <h1>Votaciones Codemotion 2017</h1>
       <template is="dom-if" if="{{!voteFinish}}">
-        <div>Charla [[charlaNum]] de 514</div> 
+        <div>Charla [[charlaNum]] de [[_numCharlas]]</div> 
         <!-- https://codemotion2017.firebaseio.com/charlas.json?auth=FFlrahDkJWTjlpfbk3CBquAt1TscwrA68HuQUsLj -->
 
         <template is="dom-if" if="{{!charla}}">
@@ -76,11 +76,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             type: Number,
             value: function(){
               var hash = document.location.hash.replace('#/','');
+              if(hash=="" || hash<1) { hash=1; }
               return parseInt(hash-1);
             },
             observer: '_calcCharlaNum'
           },
-          charlaNum: Number,
+          charlaNum: {
+            type:Number,
+            value: 1
+          },
           voteFinish: {
             type: Boolean,
             value: false
@@ -92,13 +96,24 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           votesError: {
             type: Boolean,
             value: false
+          },
+          _numCharlas: {
+            type: Number,
+            value: 0
           }
         };
       }
 
+      constructor() {
+        super();
+        firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
+          this._numCharlas =snapshot.val().length;
+        });
+      }
+
       _calcCharlaNum() {
         this.charlaNum = this.charlaId + 1;
-        if (this.charlaNum > 514) {
+        if (this.charlaNum > this._numCharlas) {
           this.voteFinish = true;
           document.location.hash='';
           this._calcVotes();
