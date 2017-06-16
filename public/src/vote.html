@@ -249,8 +249,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         updates['/pre-charlas/' + email + '/' + this.charlaId] = starsRating.rating;
         firebase.database().ref().update(updates);
         // Next Charla
-        this.myVotes[this.charlaId] = starsRating.rating;
-        this.charlaId++;
+        Polymer.RenderStatus.afterNextRender(this, function(){
+          this.myVotes[this.charlaId] = starsRating.rating;
+          this.next();
+        });
       }
       _calcVotes() {
         var email = this.user.email.replace(/[@\.]/g,"_");
