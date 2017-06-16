@@ -10,7 +10,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
 <link rel="import" href="../bower_components/cvitaede-starsrating/cvitaede-starsrating.html">
-<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/marked-element/marked-element.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
 <link rel="import" href="shared-styles.html">
 
 <dom-module id="my-view1">
@@ -18,34 +20,40 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <style include="shared-styles">
       :host {
         display: block;
-
-        padding: 10px;
+        padding: 16px;
       }
-      .autor { color:#F30;}
-      .flexlayer { display:flex; justify-content: center; }
-      .flexlayer > * { align-self: center; }
+      paper-spinner-lite {
+        position: absolute;
+        top: 80px;
+        left: 50%;
+      }
+      .autor {
+        color: var(--app-secondary-color);
+      }
+      .flexlayer {
+        display:flex;
+        justify-content: center;
+        }
+      .flexlayer > * {
+        align-self: center;
+      }
 
       .charladesc {
         overflow: auto;
-        max-height: 200px;
+        min-height: 200px;
       }
-      paper-button.indigo {
-        background-color: var(--paper-indigo-500);
+      paper-icon-button {
+        background-color: var(--app-secondary-color);
         color: white;
-        --paper-button-raised-keyboard-focus: {
-          background-color: var(--paper-pink-a200) !important;
-          color: white !important;
-        };
-        margin: 20px;
-        padding: 0;
-        min-width: 2.5em;
+        margin: 1em;
+        border-radius: 50%;
       }
-      paper-button.indigo:hover {
-        background-color: var(--paper-indigo-400);
+      paper-icon-button:hover {
+        background-color: var(--app-primary-color);
       }
 
       cvitaede-starsrating {
-        --star-color:#F00;
+        --star-color: var(--app-secondary-color);
       }
     </style>
 
@@ -54,47 +62,43 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       data="{{charla}}">
     </firebase-document>
 
-    <div class="card">
-      <template is="dom-if" if="{{!voteFinish}}">
+    <template is="dom-if" if="[[!voteFinish]]">
+      <div class="flexlayer">
+        <paper-icon-button on-tap="prev" raised icon="my-icons:chevron-left"></paper-icon-button>
+        <div>Charla [[charlaNum]] de [[_numCharlas]]</div>
+        <paper-icon-button on-tap="next" raised icon="my-icons:chevron-right"></paper-icon-button>
+      </div>
+      <paper-spinner-lite alt="Cargando charla" active="[[!charla.Titulo]]"></paper-spinner-lite>
+      <template is="dom-if" if="[[charla.Titulo]]">
         <div class="flexlayer">
-          <paper-button on-tap="prev" raised class="indigo"> &lt; </paper-button>
-          <div>Charla [[charlaNum]] de [[_numCharlas]]</div>        
-          <paper-button on-tap="next" raised class="indigo"> &gt; </paper-button>
+          <div class="flex1">Tu voto:</div>
+          <cvitaede-starsrating num-stars="5" mode="manual"></cvitaede-starsrating>
         </div>
-        <template is="dom-if" if="{{!charla}}">
-          Cargando siguiente charla...
-        </template>
-        <template is="dom-if" if="{{charla}}">
-          <div class="flexlayer">
-            <div class="flex1">Tu voto:</div>
-            <cvitaede-starsrating num-stars="5" mode="manual"></cvitaede-starsrating>
-          </div>
-          <h3>{{charla.Titulo}} <span>de</span> <span class="autor">{{charla.Autor}}</span></h3>
-          <h6>
-            Tipo: <span class="autor">{{charla.Proposal_format}}</span> 
-            Lenguajes: <span class="autor">{{charla.Programming_language}}</span>
-            Nivel: <span class="autor">{{charla.Level}}</span>
-          </h6>
-          <div class="charladesc">{{charla.Descripcion}}</div>
-        </template> 
+        <h3>{{charla.Titulo}} <span>de</span> <span class="autor">{{charla.Autor}}</span></h3>
+        <h6>
+          Tipo: <span class="autor">{{charla.Proposal_format}}</span>
+          Lenguajes: <span class="autor">{{charla.Programming_language}}</span>
+          Nivel: <span class="autor">{{charla.Level}}</span>
+        </h6>
+        <marked-element class="charladesc" markdown="[[charla.Descripcion]]">
+          <div slot="markdown-html"></div>
+        </marked-element>
       </template>
-      <template is="dom-if" if="{{voteFinish}}">
-        <h2>Votación finalizada</h2>
-        <template is="dom-if" if="{{!votesSaved}}">
-          <template is="dom-if" if="{{votesError}}">
-            <h3>No has votado todas las charlas aún</h3>
-          </template>
-          <template is="dom-if" if="{{!votesError}}">
-            <h3>Procesando tus votos...</h3>
-          </template>
+    </template>
+    <template is="dom-if" if="[[voteFinish]]">
+      <h2>Votación finalizada</h2>
+      <template is="dom-if" if="[[!votesSaved]]">
+        <template is="dom-if" if="[[votesError]]">
+          <h3>No has votado todas las charlas aún</h3>
         </template>
-        <template is="dom-if" if="{{votesSaved}}">
-          <h3>Tus votos han sido guardados. Gracias por colaborar</h3>
+        <template is="dom-if" if="[[!votesError]]">
+          <h3>Procesando tus votos...</h3>
         </template>
       </template>
-
+      <template is="dom-if" if="[[votesSaved]]">
+        <h3>Tus votos han sido guardados. Gracias por colaborar</h3>
       </template>
-    </div>
+    </template>
   </template>
 
   <script>
@@ -116,6 +120,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             type:Number,
             value: 1
           },
+          charla: {
+            type: Object
+          },
           voteFinish: {
             type: Boolean,
             value: false
@@ -136,6 +143,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         }
       }
 
+      static get observers() {
+        return [
+          '_ctrlStarsVotes(charla.Id)'
+        ];
+      }
+
       constructor() {
         super();
         firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
@@ -149,7 +162,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           }
         }
       }
-      
+
       prev() {
         this.charlaId--;
       }
@@ -179,13 +192,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         }
       }
 
-      connectedCallback() { 
+      connectedCallback() {
         super.connectedCallback();
         Polymer.RenderStatus.afterNextRender(this, function() {
           this._ctrlIfUserHasVoted();
-          if (!this.voteFinish) {
-            this._ctrlStarsVotes();
-          }
 
           var email = this.user.email.replace(/[@\.]/g,"_");
           console.log(email);
@@ -211,20 +221,23 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         });
       }
 
-      _ctrlStarsVotes() {
-        var starsRating = this.root.querySelector('cvitaede-starsrating');
-        starsRating.addEventListener('click', e => {
-          // TODO: UPDATE VOTO CHARLA
-          var updates = {};
-          var email = this.user.email.replace(/[@\.]/g,"_");
-          updates['/pre-charlas/' + email + '/' + this.charlaId] = starsRating.rating;
-          firebase.database().ref().update(updates);
-          // Next Charla
-          var target = e.target; 
-          setTimeout( () => {
-            this.charlaId++;
-            target.reset();
-          }, 300);
+      _ctrlStarsVotes(charlaId) {
+        Polymer.RenderStatus.afterNextRender(this, function(){
+          var starsRating = this.root.querySelector('cvitaede-starsrating');
+          if (!starsRating) return;
+          starsRating.addEventListener('click', e => {
+            // TODO: UPDATE VOTO CHARLA
+            var updates = {};
+            var email = this.user.email.replace(/[@\.]/g,"_");
+            updates['/pre-charlas/' + email + '/' + this.charlaId] = starsRating.rating;
+            firebase.database().ref().update(updates);
+            // Next Charla
+            var target = e.target;
+            setTimeout( () => {
+              this.charlaId++;
+              target.reset();
+            }, 300);
+          });
         });
       }
 
@@ -249,7 +262,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 updates['/charlas'] = charlas;
                 firebase.database().ref().update(updates).then( ()=> {
                   console.log('votes updated');
-                  firebase.database().ref('/pre-charlas/').child(email).once('value').then( (snapshot) => { 
+                  firebase.database().ref('/pre-charlas/').child(email).once('value').then( (snapshot) => {
                     var preCharlas = snapshot.val();
                     firebase.database().ref('/users-voted/' + email).set(preCharlas);
                     firebase.database().ref('/pre-charlas/' + email).remove();

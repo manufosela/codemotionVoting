@@ -10,6 +10,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
 <link rel="import" href="../bower_components/polymerfire/polymerfire.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid-column-group.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid-sorter.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid-filter.html">
 <link rel="import" href="shared-styles.html">
 
 <dom-module id="my-view2">
@@ -17,48 +23,76 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <style include="shared-styles">
       :host {
         display: block;
-        padding: 10px;
       }
-      table { 
-		width: 100%; 
-		border-collapse: collapse; 
-	}
-	/* Zebra striping */
-	tr:nth-of-type(odd) { 
-		background: #eee; 
-	}
-	th { 
-		background: #333; 
-		color: white; 
-		font-weight: bold; 
-	}
-	td, th { 
-		padding: 6px; 
-		border: 1px solid #ccc; 
-		text-align: left; 
-	}
-
+      paper-spinner-lite {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+      }
+      vaadin-grid {
+        height: calc(100vh - 64px);
+      }
+      /* Zebra striping */
+      vaadin-grid-cell-content:nth-of-type(n+4) {
+        background: #eee;
+      }
+      th {
+        background: #333;
+        color: white;
+        font-weight: bold;
+      }
+      td, th {
+        padding: 6px;
+        border: 1px solid #ccc;
+        text-align: left;
+      }
     </style>
-   
+
     <!-- https://codemotion2017.firebaseio.com/charlas.json?auth=FFlrahDkJWTjlpfbk3CBquAt1TscwrA68HuQUsLj -->
     <firebase-document
         path="/charlas"
         data="{{charlas}}">
     </firebase-document>
 
-    <div class="card">
-      <h1>Resultados</h1>
-      <template is="dom-if" if="{{!charlas.length}}">
-        Cargando charlas...
-      </template>
-      <template is="dom-if" if="{{charlas.length}}">
-        <table>
-        <template is="dom-repeat" items="{{charlas}}" as="charla">
-          <tr><td>{{index}}</td><td>{{charla.Titulo}}</td><td>{{charla.Votos}}</td></tr>
-        </template>
-        </table>
-      </template>
-    </div>
+    <paper-spinner-lite alt="Cargando charlas" active="[[!charlas.length]]"></paper-spinner-lite>
+    <template is="dom-if" if="{{charlas.length}}">
+      <vaadin-grid aria-label="Sorting Example" items="[[charlas]]">
+        <vaadin-grid-column-group frozen resizable>
+          <vaadin-grid-column width="50px" flex-grow="0">
+            <template class="header">#</template>
+            <template>[[pos(index)]]</template>
+          </vaadin-grid-column>
+        </vaadin-grid-column-group>
+
+        <vaadin-grid-column-group resizable>
+          <vaadin-grid-column width="300px">
+            <template class="header">
+              <vaadin-grid-filter aria-label="Titulo" path="Titulo" value="[[_filterTitulo]]">
+                <paper-input placeholder="Titulo" value="{{_filterTitulo::input}}" focus-target></paper-input>
+              </vaadin-grid-filter>
+            </template>
+            <template>[[item.Titulo]]</template>
+          </vaadin-grid-column>
+
+          <vaadin-grid-column width="300px">
+            <template class="header">
+              <vaadin-grid-filter aria-label="Autor" path="Autor" value="[[Autor]]">
+                <paper-input placeholder="Autor" value="{{Autor::input}}" focus-target></paper-input>
+              </vaadin-grid-filter>
+            </template>
+            <template>[[item.Autor]]</template>
+          </vaadin-grid-column>
+
+          <vaadin-grid-column width="100px" flex-grow="0">
+            <template class="header">
+              <vaadin-grid-sorter path="Votos" direction="desc">Votos</vaadin-grid-sorter>
+            </template>
+            <template>[[item.Votos]]</template>
+          </vaadin-grid-column>
+        </vaadin-grid-column-group>
+
+      </vaadin-grid>
+    </template>
   </template>
 
   <script>
@@ -77,6 +111,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       dataChanged(newData, oldData) {
         // do something when the query returns values
         //console.log(newData, oldData);
+      }
+
+      pos(index) {
+        return index+1
       }
 
     }

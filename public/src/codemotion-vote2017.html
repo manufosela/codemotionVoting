@@ -22,7 +22,10 @@
     <style>
       :host {
         --app-primary-color: #F0D955;
-        --app-secondary-color: black;
+        --app-secondary-color: #F30;
+        --app-primary-background: black;
+        --app-drawer-width: 270px;;
+        --app-header-height: 64px;
 
         display: block;
       }
@@ -32,12 +35,27 @@
       }
 
       app-header {
-        color: #00f;
+        height: var(--app-header-height);
+        color: var(--app-primary-background);
         background-color: var(--app-primary-color);
       }
 
       app-header paper-icon-button {
         --paper-icon-button-ink-color: white;
+      }
+
+      iron-pages > * {
+        box-sizing: border-box;
+        position: relative;
+        min-height: calc(100vh - var(--app-header-height));
+        background: white;
+      }
+      iron-pages > div {
+        padding: 16px;
+      }
+
+      p {
+        margin:0 0 1em 0;
       }
 
       .drawer-list {
@@ -48,19 +66,19 @@
         display: block;
         padding: 0 16px;
         text-decoration: none;
-        color: var(--app-secondary-color);
+        color: var(--app-primary-background);
         line-height: 40px;
       }
 
       .drawer-list a.iron-selected {
-        color: black;
+        color: var(--app-primary-background);
         font-weight: bold;
       }
 
       .login {
         font-size: 0.8rem;
-        background: #23F;
-        color: #FF0;
+        background: var(--app-primary-background);
+        color:var(--app-primary-color);
         font-weight: bold;
       }
     </style>
@@ -85,7 +103,9 @@
     <app-drawer-layout fullbleed>
       <!-- Drawer content -->
       <app-drawer id="drawer" slot="drawer">
-        <app-toolbar>Menu</app-toolbar>
+        <app-toolbar>
+          <p main-title>[[user.displayName]]</p>
+        </app-toolbar>
         <template is="dom-if" if="[[user]]">
           <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
             <a name="vote" href="/vote">Vote</a>
@@ -97,33 +117,28 @@
       <!-- Main content -->
       <app-header-layout has-scrolling-region>
 
-        <app-header slot="header" condenses reveals effects="waterfall">
+        <app-header slot="header">
           <app-toolbar>
             <paper-icon-button icon="my-icons:menu" drawer-toggle></paper-icon-button>
-            <div main-title>Codemotion 2017 - Votaciones</div>
-            <div>
-              <paper-button class="login" raised on-tap="login" hidden$="[[user]]">Sign In</paper-button>
-              <paper-button class="login" raised on-tap="logout" hidden$="[[!user]]">Sign Out</paper-button>
-            </div>
+            <div main-title>Votaciones Codemotion 2017</div>
+            <paper-button class="login" raised on-tap="login" hidden$="[[user]]">Sign in</paper-button>
+            <paper-button class="login" raised on-tap="logout" hidden$="[[!user]]">Sign out</paper-button>
           </app-toolbar>
-          [[user.displayName]]
         </app-header>
 
-        <template is="dom-if" if="[[user]]">
-          <iron-pages
-              selected="[[page]]"
-              attr-for-selected="name"
-              fallback-selection="view404"
-              role="main">
-            <my-view1 name="vote" user="{{user}}"></my-view1>
-            <my-view2 name="results"></my-view2>
-            <my-view404 name="view404"></my-view404>
-          </iron-pages>
-        </template>
-        <template is="dom-if" if="[[!user]]">
-          <p>Es necesario identificarse con un correo electronico para poder acceder a la votación del Codemotion 2017</p>
-          <p>Para que los votos se contabilicen es necesario votar las 514 charlar propuestas</p>
-        </template>
+        <iron-pages
+            selected="[[page]]"
+            attr-for-selected="name"
+            fallback-selection="view404"
+            role="main">
+          <my-view1 name="vote" user="{{user}}"></my-view1>
+          <my-view2 name="results"></my-view2>
+          <div name="signout">
+            <p>Es necesario identificarse con un correo electronico para poder acceder a la votación del Codemotion 2017</p>
+            <p>Para que los votos se contabilicen es necesario votar las 514 charlar propuestas</p>
+          <div>
+          <my-view404 name="view404"></my-view404>
+        </iron-pages>
       </app-header-layout>
     </app-drawer-layout>
   </template>
@@ -143,12 +158,13 @@
           rootPattern: String,
           routeData: Object,
           subroute: String,
+          user: Object
         };
       }
 
       static get observers() {
         return [
-          '_routePageChanged(routeData.page)',
+          '_routePageChanged(routeData.page, user)',
         ];
       }
 
@@ -158,11 +174,11 @@
       }
 
       login() {
-        return this.$.auth.signInWithPopup();
+        return this.$.auth.signInWithPopup().then(this.showVote.bind(this));
       }
 
       logout() {
-        return this.$.auth.signOut();
+        return this.$.auth.signOut().then(this.showSignout.bind(this));
       }
 
       _routePageChanged(page) {
@@ -170,13 +186,18 @@
           console.log('page undefined');
           return;
         }
-        this.page = page || 'vote';
+        if (this.user) {
+          this.page = page || 'vote';
+        } else {
+          this.showSignout();
+        }
         if (!this.$.drawer.persistent) {
           this.$.drawer.close();
         }
       }
 
       _pageChanged(page) {
+        if (page === 'signout') return;
         var resolvedPageUrl = this.resolveUrl(page + '.html');
         Polymer.importHref(
             resolvedPageUrl,
@@ -184,7 +205,12 @@
             this._showPage404.bind(this),
             true);
       }
-
+      showVote() {
+        this.page = 'vote';
+      }
+      showSignout() {
+        this.page = 'signout';
+      }
       _showPage404() {
         this.page = 'view404';
       }
