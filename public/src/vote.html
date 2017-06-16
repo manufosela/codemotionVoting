@@ -139,7 +139,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             type: Number,
             value: 0
           },
-          _email: String
+          _email: String,
+           myVotes:{
+            type: Object,
+            value: []
+          }
         }
       }
 
@@ -189,6 +193,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           if (this.charlNum!=this._numCharlas) {
             document.location.hash='/'+this.charlaNum;
           }
+          var stars= this.root.querySelector('cvitaede-starsrating');
+          if (stars) {
+            stars.rating = this.myVotes[this.charlaId] || 0;
+          } 
         }
       }
 
@@ -198,14 +206,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           this._ctrlIfUserHasVoted();
 
           var email = this.user.email.replace(/[@\.]/g,"_");
-          console.log(email);
           firebase.database().ref('/pre-charlas').child(email).once('value').then( (snapshot) => {
             var votos = Object.keys(snapshot.val());
             if (votos) {
               var lastCharlaVoted = Math.max(...votos) + 1;
               this.charlaId=lastCharlaVoted;
-              console.log(lastCharlaVoted);
             }
+          });
+          firebase.database().ref('pre-charlas').child(email).once('value').then( (snapshot) => {
+            this.myVotes = snapshot.val();
           });
         });
       }
@@ -233,6 +242,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             firebase.database().ref().update(updates);
             // Next Charla
             var target = e.target;
+            this.myVotes[this.charlaId] = starsRating.rating;
             setTimeout( () => {
               this.charlaId++;
               target.reset();
@@ -261,7 +271,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 var updates = {};
                 updates['/charlas'] = charlas;
                 firebase.database().ref().update(updates).then( ()=> {
-                  console.log('votes updated');
                   firebase.database().ref('/pre-charlas/').child(email).once('value').then( (snapshot) => {
                     var preCharlas = snapshot.val();
                     firebase.database().ref('/users-voted/' + email).set(preCharlas);
