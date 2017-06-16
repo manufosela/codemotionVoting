@@ -12,6 +12,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../bower_components/polymerfire/polymerfire.html">
 <link rel="import" href="../bower_components/paper-input/paper-input.html">
 <link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
+<link rel="import" href="../bower_components/marked-element/marked-element.html">
 <link rel="import" href="../bower_components/vaadin-grid/vaadin-grid.html">
 <link rel="import" href="../bower_components/vaadin-grid/vaadin-grid-column-group.html">
 <link rel="import" href="../bower_components/vaadin-grid/vaadin-grid-sorter.html">
@@ -26,25 +27,37 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
       paper-spinner-lite {
         position: absolute;
-        top: 10px;
-        left: 50%;
+        top: 100px;
+        left: calc(50% - 50px);
       }
       vaadin-grid {
         height: calc(100vh - 64px);
       }
       /* Zebra striping */
-      vaadin-grid-cell-content:nth-of-type(n+4) {
-        background: #eee;
+      vaadin-grid {
+        --vaadin-grid-cell: {
+
+        };
+        --vaadin-grid-header-cell: {
+          height: 64px;
+          color: rgba(0, 0, 0, var(--dark-secondary-opacity));
+          font-size: 12px;
+        };
+        --vaadin-grid-body-row-odd-cell: {
+          background-color: #f5f5f5;
+        };
+        --vaadin-grid-body-row-hover-cell: {
+          background-color: var(--paper-grey-200);
+        };
       }
-      th {
-        background: #333;
-        color: white;
-        font-weight: bold;
+
+      .details-cell {
+        white-space: normal;
+        padding: 1em;
+        overflow: auto;
       }
-      td, th {
-        padding: 6px;
-        border: 1px solid #ccc;
-        text-align: left;
+      .autor {
+        color: var(--app-secondary-color);
       }
     </style>
 
@@ -55,44 +68,54 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     </firebase-document>
 
     <paper-spinner-lite alt="Cargando charlas" active="[[!charlas.length]]"></paper-spinner-lite>
-    <template is="dom-if" if="{{charlas.length}}">
-      <vaadin-grid aria-label="Sorting Example" items="[[charlas]]">
-        <vaadin-grid-column-group frozen resizable>
-          <vaadin-grid-column width="50px" flex-grow="0">
-            <template class="header">#</template>
-            <template>[[pos(index)]]</template>
-          </vaadin-grid-column>
-        </vaadin-grid-column-group>
+    <vaadin-grid id="results" aria-label="Sorting Example" items="[[charlas]]" on-active-item-changed="_activeItemChanged">
+      <template class="row-details">
+        <div class="details-cell">
+          <p>
+            Tipo: <span class="autor">{{item.Proposal_format}}</span>
+            Lenguajes: <span class="autor">{{item.Programming_language}}</span>
+            Nivel: <span class="autor">{{item.Level}}</span>
+          </p>
+          <marked-element class="charladesc" markdown="[[item.Descripcion]]">
+            <div slot="markdown-html"></div>
+          </marked-element>
+        </div>
+      </template>
+      <vaadin-grid-column-group frozen resizable>
+        <vaadin-grid-column width="50px" flex-grow="0">
+          <template class="header">#</template>
+          <template>[[pos(index)]]</template>
+        </vaadin-grid-column>
+      </vaadin-grid-column-group>
 
-        <vaadin-grid-column-group resizable>
-          <vaadin-grid-column width="300px">
-            <template class="header">
-              <vaadin-grid-filter aria-label="Titulo" path="Titulo" value="[[_filterTitulo]]">
-                <paper-input placeholder="Titulo" value="{{_filterTitulo::input}}" focus-target></paper-input>
-              </vaadin-grid-filter>
-            </template>
-            <template>[[item.Titulo]]</template>
-          </vaadin-grid-column>
+      <vaadin-grid-column-group resizable>
+        <vaadin-grid-column width="300px">
+          <template class="header">
+            <vaadin-grid-filter aria-label="Titulo" path="Titulo" value="[[_filterTitulo]]">
+              <paper-input placeholder="Titulo" value="{{_filterTitulo::input}}" focus-target></paper-input>
+            </vaadin-grid-filter>
+          </template>
+          <template>[[item.Titulo]]</template>
+        </vaadin-grid-column>
 
-          <vaadin-grid-column width="300px">
-            <template class="header">
-              <vaadin-grid-filter aria-label="Autor" path="Autor" value="[[Autor]]">
-                <paper-input placeholder="Autor" value="{{Autor::input}}" focus-target></paper-input>
-              </vaadin-grid-filter>
-            </template>
-            <template>[[item.Autor]]</template>
-          </vaadin-grid-column>
+        <vaadin-grid-column width="300px">
+          <template class="header">
+            <vaadin-grid-filter aria-label="Autor" path="Autor" value="[[Autor]]">
+              <paper-input placeholder="Autor" value="{{Autor::input}}" focus-target></paper-input>
+            </vaadin-grid-filter>
+          </template>
+          <template>[[item.Autor]]</template>
+        </vaadin-grid-column>
 
-          <vaadin-grid-column width="100px" flex-grow="0">
-            <template class="header">
-              <vaadin-grid-sorter path="Votos" direction="desc">Votos</vaadin-grid-sorter>
-            </template>
-            <template>[[item.Votos]]</template>
-          </vaadin-grid-column>
-        </vaadin-grid-column-group>
+        <vaadin-grid-column width="100px" flex-grow="0">
+          <template class="header">
+            <vaadin-grid-sorter path="Votos" direction="desc">Votos</vaadin-grid-sorter>
+          </template>
+          <template>[[item.Votos]]</template>
+        </vaadin-grid-column>
+      </vaadin-grid-column-group>
 
-      </vaadin-grid>
-    </template>
+    </vaadin-grid>
   </template>
 
   <script>
@@ -102,7 +125,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       static get properties() {
         return {
           charlas: {
-            type: Object,
+            type: Array,
+            value: function() {
+              return [];
+            },
             observer: 'dataChanged'
           }
         }
@@ -116,6 +142,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       pos(index) {
         return index+1
       }
+
+      _activeItemChanged() {
+          this._clickedItem = this.$.results.activeItem ? this.$.results.activeItem : this._clickedItem;
+
+          if (this.$.results.expandedItems.indexOf(this._clickedItem) > -1) {
+            this.$.results.collapseItem(this._clickedItem);
+          } else {
+            this.$.results.expandItem(this._clickedItem);
+          }
+        }
 
     }
 
