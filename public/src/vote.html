@@ -155,6 +155,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       constructor() {
         super();
+        this._voteAndNext = this._voteAndNext.bind(this);
         firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
           this._numCharlas =snapshot.val().length;
           this._calcCharlaNum();
@@ -196,7 +197,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           var stars= this.root.querySelector('cvitaede-starsrating');
           if (stars) {
             stars.rating = this.myVotes[this.charlaId] || 0;
-          } 
+          }
         }
       }
 
@@ -233,24 +234,24 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       _ctrlStarsVotes(charlaId) {
         Polymer.RenderStatus.afterNextRender(this, function(){
           var starsRating = this.root.querySelector('cvitaede-starsrating');
-          if (!starsRating) return;
-          starsRating.addEventListener('click', e => {
-            // TODO: UPDATE VOTO CHARLA
-            var updates = {};
-            var email = this.user.email.replace(/[@\.]/g,"_");
-            updates['/pre-charlas/' + email + '/' + this.charlaId] = starsRating.rating;
-            firebase.database().ref().update(updates);
-            // Next Charla
-            var target = e.target;
-            this.myVotes[this.charlaId] = starsRating.rating;
-            setTimeout( () => {
-              this.charlaId++;
-              target.reset();
-            }, 300);
-          });
+          if (starsRating) {
+            starsRating.addEventListener('click', this._voteAndNext);
+          }
         });
       }
 
+      _voteAndNext(e) {
+        var starsRating = e.target;
+        starsRating.removeEventListener('click', this._voteAndNext);
+        // TODO: UPDATE VOTO CHARLA
+        var updates = {};
+        var email = this.user.email.replace(/[@\.]/g,"_");
+        updates['/pre-charlas/' + email + '/' + this.charlaId] = starsRating.rating;
+        firebase.database().ref().update(updates);
+        // Next Charla
+        this.myVotes[this.charlaId] = starsRating.rating;
+        this.charlaId++;
+      }
       _calcVotes() {
         var email = this.user.email.replace(/[@\.]/g,"_");
         firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
