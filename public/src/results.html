@@ -35,9 +35,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       }
       /* Zebra striping */
       vaadin-grid {
-        --vaadin-grid-cell: {
-
-        };
         --vaadin-grid-header-cell: {
           height: 64px;
           color: rgba(0, 0, 0, var(--dark-secondary-opacity));
@@ -68,19 +65,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     </firebase-document>
 
     <paper-spinner-lite alt="Cargando charlas" active="[[!charlas.length]]"></paper-spinner-lite>
-    <vaadin-grid id="results" aria-label="Sorting Example" items="[[charlas]]" on-active-item-changed="_activeItemChanged">
-      <template class="row-details">
-        <div class="details-cell">
-          <p>
-            Tipo: <span class="autor">{{item.Proposal_format}}</span>
-            Lenguajes: <span class="autor">{{item.Programming_language}}</span>
-            Nivel: <span class="autor">{{item.Level}}</span>
-          </p>
-          <marked-element class="charladesc" markdown="[[item.Descripcion]]">
-            <div slot="markdown-html"></div>
-          </marked-element>
-        </div>
-      </template>
+    <vaadin-grid id="results" aria-label="Resultados" items="[[charlas]]">
       <vaadin-grid-column-group frozen resizable>
         <vaadin-grid-column width="50px" flex-grow="0">
           <template class="header">#</template>
@@ -92,7 +77,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <vaadin-grid-column width="300px">
           <template class="header">
             <vaadin-grid-filter aria-label="Titulo" path="Titulo" value="[[_filterTitulo]]">
-              <paper-input placeholder="Titulo" value="{{_filterTitulo::input}}" focus-target></paper-input>
+              <paper-input slot="filter" placeholder="Titulo" value="{{_filterTitulo::input}}" focus-target></paper-input>
             </vaadin-grid-filter>
           </template>
           <template>[[item.Titulo]]</template>
@@ -101,7 +86,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <vaadin-grid-column width="300px">
           <template class="header">
             <vaadin-grid-filter aria-label="Autor" path="Autor" value="[[Autor]]">
-              <paper-input placeholder="Autor" value="{{Autor::input}}" focus-target></paper-input>
+              <paper-input slot="filter" placeholder="Autor" value="{{Autor::input}}" focus-target></paper-input>
             </vaadin-grid-filter>
           </template>
           <template>[[item.Autor]]</template>
@@ -114,7 +99,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
           <template>[[item.Votos]]</template>
         </vaadin-grid-column>
       </vaadin-grid-column-group>
-
     </vaadin-grid>
   </template>
 
@@ -128,31 +112,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             type: Array,
             value: function() {
               return [];
-            },
-            observer: 'dataChanged'
+            }
           }
         }
-      }
-
-      dataChanged(newData, oldData) {
-        // do something when the query returns values
-        //console.log(newData, oldData);
       }
 
       pos(index) {
         return index+1
       }
-
-      _activeItemChanged() {
-          this._clickedItem = this.$.results.activeItem ? this.$.results.activeItem : this._clickedItem;
-
-          if (this.$.results.expandedItems.indexOf(this._clickedItem) > -1) {
-            this.$.results.collapseItem(this._clickedItem);
-          } else {
-            this.$.results.expandItem(this._clickedItem);
-          }
-        }
-
     }
 
     window.customElements.define(MyView2.is, MyView2);

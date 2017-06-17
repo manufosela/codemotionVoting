@@ -9,96 +9,44 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 -->
 
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymer/lib/elements/dom-repeat.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
 <link rel="import" href="../bower_components/cvitaede-starsrating/cvitaede-starsrating.html">
 <link rel="import" href="../bower_components/marked-element/marked-element.html">
 <link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
 <link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-query.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-document.html">
 <link rel="import" href="shared-styles.html">
+<link rel="import" href="vote-rating.html">
 
 <dom-module id="my-view1">
   <template>
     <style include="shared-styles">
-      :host {
+      :host(:not([hidden])) {
         display: block;
         padding: 16px;
       }
-      paper-spinner-lite {
-        position: absolute;
-        top: 80px;
-        left: 50%;
-      }
-      .autor {
-        color: var(--app-secondary-color);
-      }
-      .flexlayer {
-        display:flex;
-        justify-content: center;
-        }
-      .flexlayer > * {
-        align-self: center;
-      }
-
-      .charladesc {
-        overflow: auto;
-        min-height: 200px;
-      }
-      paper-icon-button {
-        background-color: var(--app-secondary-color);
-        color: white;
-        margin: 1em;
-        border-radius: 50%;
-      }
-      paper-icon-button:hover {
-        background-color: var(--app-primary-color);
-      }
-
-      cvitaede-starsrating {
-        --star-color: var(--app-secondary-color);
-      }
     </style>
 
+    <app-route
+        route="{{route}}"
+        active="{{routeActive}}"
+        pattern="/:page"
+        data="{{routeData}}"
+        tail="{{subroute}}"></app-route>
+
+    <firebase-query
+      path="/charlas"
+      data="{{charlas}}">
+    </firebase-query>
+
     <firebase-document
-      path="/charlas/[[charlaId]]"
-      data="{{charla}}">
+      path="/pre-charlas/[[_emailSlug(user.email)]]"
+      data="{{myVotes}}">
     </firebase-document>
 
-    <template is="dom-if" if="[[!voteFinish]]">
-      <div class="flexlayer">
-        <paper-icon-button on-tap="prev" raised icon="my-icons:chevron-left"></paper-icon-button>
-        <div>Charla [[charlaNum]] de [[_numCharlas]]</div>
-        <paper-icon-button on-tap="next" raised icon="my-icons:chevron-right"></paper-icon-button>
-      </div>
-      <paper-spinner-lite alt="Cargando charla" active="[[!charla.Titulo]]"></paper-spinner-lite>
-      <template is="dom-if" if="[[charla.Titulo]]">
-        <div class="flexlayer">
-          <div class="flex1">Tu voto:</div>
-          <cvitaede-starsrating num-stars="5" mode="manual" on-rating-changed="_voteAndNext"></cvitaede-starsrating>
-        </div>
-        <h3>{{charla.Titulo}} <span>de</span> <span class="autor">{{charla.Autor}}</span></h3>
-        <h6>
-          Tipo: <span class="autor">{{charla.Proposal_format}}</span>
-          Lenguajes: <span class="autor">{{charla.Programming_language}}</span>
-          Nivel: <span class="autor">{{charla.Level}}</span>
-        </h6>
-        <marked-element class="charladesc" markdown="[[charla.Descripcion]]">
-          <div slot="markdown-html"></div>
-        </marked-element>
-      </template>
-    </template>
-    <template is="dom-if" if="[[voteFinish]]">
-      <h2>Votación finalizada</h2>
-      <template is="dom-if" if="[[!votesSaved]]">
-        <template is="dom-if" if="[[votesError]]">
-          <h3>No has votado todas las charlas aún</h3>
-        </template>
-        <template is="dom-if" if="[[!votesError]]">
-          <h3>Procesando tus votos...</h3>
-        </template>
-      </template>
-      <template is="dom-if" if="[[votesSaved]]">
-        <h3>Tus votos han sido guardados. Gracias por colaborar</h3>
-      </template>
-    </template>
+    <vote-rating name="rating" current="{{current}}" total="[[charlas.length]]" rating="{{rating}}" charla="[[_getCharla(charlas, current)]]"></vote-rating>
   </template>
 
   <script>
@@ -107,172 +55,122 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
       static get properties() {
         return {
-          charlaId: {
+          page: {
+            type: String,
+            observer: '_pageChanged',
+          },
+          rootPattern: String,
+          routeData: Object,
+          routeActive: Boolean,
+          subroute: String,
+          selected: {
+            type: Boolean,
+            observer: '_selectedChanged'
+          },
+          charlas: Array,
+          rating: {
             type: Number,
-            value: function(){
-              var hash = document.location.hash.replace('#/','');
-              if(hash=="" || hash<1) { hash=1; }
-              return (hash==='finished')?hash:this._checkCharlaId(parseInt(hash-1));
-            },
-            observer: '_calcCharlaNum'
+            observer: '_ratingChanged'
           },
-          charlaNum: {
-            type:Number,
-            value: 1
-          },
-          charla: {
-            type: Object
-          },
-          voteFinish: {
-            type: Boolean,
-            value: false
-          },
-          votesSaved: {
-            type: Boolean,
-            value: false
-          },
-          votesError: {
-            type: Boolean,
-            value: false
-          },
-          _numCharlas: {
-            type: Number,
-            value: 0
-          },
-          _email: String,
-           myVotes:{
+          myVotes:{
             type: Object,
             value: []
+          },
+          current: {
+            type: Number,
+            observer: '_currentChanged'
+          },
+          _votesLeft: {
+            type: Array,
+            computed: '_computeVotesLeft(myVotes)',
           }
         }
+      }
+
+      static get observers() {
+        return [
+          '_routePageChanged(routeData.page, myVotes)',
+          '_getRating(myVotes, current)'
+        ];
       }
 
       constructor() {
         super();
-        this._voteAndNext = this._voteAndNext.bind(this);
-        firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
-          this._numCharlas =snapshot.val().length;
-          this._calcCharlaNum();
-        });
-        window.onhashchange = () => {
-          if (document.location.hash!='#/finished') {
-            this._ctrlIfUserHasVoted();
-            this.charlaId = this._checkCharlaId(parseInt(document.location.hash.replace('#/','')) - 1);
-          }
-        }
+        this.next = this.next.bind(this);
       }
 
       prev() {
-        this.charlaId--;
+        this.page = (parseInt(this.page) - 1).toString();
       }
 
       next() {
-        this.charlaId++;
+        this.page = (parseInt(this.page) + 1).toString();
       }
 
-      _checkCharlaId(value) {
-        if (!value) { value=0; }
-        if (value>this._numCharlas) { value=this._numCharlas-1; }
-        if (value<0) { value=0; }
-        return value;
+      _getCharla(charlas, current) {
+        return charlas[current];
       }
 
-      _calcCharlaNum() {
-        this.charlaNum = this.charlaId + 1;
-        if (this.charlaNum > this._numCharlas && this._numCharlas !== 0) {
-          this.voteFinish = true;
-          document.location.hash='/finished';
-          this._calcVotes();
+      _computeVotesLeft(myVotes) {
+        if (myVotes.length) {
+          return myVotes
+            .map((item, index) => item === 0 ? index : null)
+            .filter((item, index) => item !== null);
         } else {
-          this.voteFinish = false;
-          if (this.charlNum!=this._numCharlas) {
-            document.location.hash='/'+this.charlaNum;
-          }
-          var stars= this.root.querySelector('cvitaede-starsrating');
-          if (stars) {
-            stars.rating = this.myVotes[this.charlaId] || 0;
-          }
+          return [];
         }
       }
 
-      connectedCallback() {
-        super.connectedCallback();
-        Polymer.RenderStatus.afterNextRender(this, function() {
-          this._ctrlIfUserHasVoted();
-
-          var email = this.user.email.replace(/[@\.]/g,"_");
-          firebase.database().ref('/pre-charlas').child(email).once('value').then( (snapshot) => {
-            var votos = Object.keys(snapshot.val());
-            if (votos) {
-              var lastCharlaVoted = Math.max(...votos) + 1;
-              this.charlaId=lastCharlaVoted;
-            }
-          });
-          firebase.database().ref('pre-charlas').child(email).once('value').then( (snapshot) => {
-            this.myVotes = snapshot.val();
-          });
-        });
+      _selectedChanged(selected) {
+        if (selected && !this.routeActive) {
+          this.set('route.path', '/');
+        }
       }
 
-      _ctrlIfUserHasVoted() {
-        var email = this.user.email.replace(/[@\.]/g,"_");
-        firebase.database().ref().child('/users-voted/'+email).once('value').then( (snapshot) => {
-          var email = snapshot.val();
-          if (email && email.length > 0) {
-            this.voteFinish = true;
-            this.votesSaved = true;
-          }
-        });
+      _routePageChanged(routeDataPage, myVotes) {
+        if (routeDataPage === undefined) {
+          return this.set('route.path', '/');
+        }
+        if (myVotes.length) {
+          this.page = (routeDataPage || (this._votesLeft.length ? this._votesLeft[0] + 1 : 1)).toString();
+        } else {
+          window.history.pushState({}, null, '/summary');
+          window.dispatchEvent(new CustomEvent('location-changed'));
+        }
       }
 
-      _voteAndNext(e, detail) {
-        if (detail.value && detail.value !== this.myVotes[this.charlaId]) {
-          this.myVotes[this.charlaId] = detail.value;
-          // TODO: UPDATE VOTO CHARLA
-          var updates = {};
-          var email = this.user.email.replace(/[@\.]/g,"_");
-          updates['/pre-charlas/' + email + '/' + this.charlaId] = detail.value;
-          firebase.database().ref().update(updates);
+      _pageChanged(page) {
+        if (page) {
+          this.current = page - 1;
+        }
+        this.set('routeData.page', page);
+      }
+
+      _currentChanged(current) {
+        if (current >= this.charlas.length) {
+          current = this.charlas.length - 1;
+        } else if (current < 0) {
+          current = 0;
+        }
+        this.current = current;
+        this.page = (current + 1).toString();
+      }
+
+      _emailSlug(email) {
+        return email.replace(/[@\.]/g,"_");
+      }
+
+      _getRating(myVotes, current) {
+        this.rating = myVotes[current];
+      }
+
+      _ratingChanged(rating) {
+        if (rating && rating !== this.myVotes[this.current]) {
+          this.set('myVotes.' + this.current, rating);
           // Next Charla
-          this.next();
+          Polymer.Async.timeOut.after(500).run(this.next);
         }
       }
-
-      _calcVotes() {
-        var email = this.user.email.replace(/[@\.]/g,"_");
-        firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
-          var charlas = snapshot.val();
-          if (this.voteFinish) {
-            firebase.database().ref().child('pre-charlas/' + email).once('value').then( (snapshot) => {
-              var preCharlas =snapshot.val();
-              if (preCharlas && preCharlas.length===charlas.length) {
-                for(var k in charlas) {
-                  if (preCharlas[k]>0 && preCharlas[k]<6) {
-                    charlas[k].Votos += preCharlas[k];
-                  } else {
-                    this.votesSaved = false;
-                    this.votesError = true;
-                    return;
-                  }
-                }
-                var updates = {};
-                updates['/charlas'] = charlas;
-                firebase.database().ref().update(updates).then( ()=> {
-                  firebase.database().ref('/pre-charlas/').child(email).once('value').then( (snapshot) => {
-                    var preCharlas = snapshot.val();
-                    firebase.database().ref('/users-voted/' + email).set(preCharlas);
-                    firebase.database().ref('/pre-charlas/' + email).remove();
-                    this.votesSaved = true;
-                    this.votesError = false;
-                  });
-                });
-              } else {
-                this.votesSaved = false;
-                this.votesError = true;
-              }
-            });
-          }
-        });
       }
     }
 
