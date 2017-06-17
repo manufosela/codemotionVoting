@@ -72,7 +72,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
       <template is="dom-if" if="[[charla.Titulo]]">
         <div class="flexlayer">
           <div class="flex1">Tu voto:</div>
-          <cvitaede-starsrating num-stars="5" mode="manual"></cvitaede-starsrating>
+          <cvitaede-starsrating num-stars="5" mode="manual" on-rating-changed="_voteAndNext"></cvitaede-starsrating>
         </div>
         <h3>{{charla.Titulo}} <span>de</span> <span class="autor">{{charla.Autor}}</span></h3>
         <h6>
@@ -145,12 +145,6 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             value: []
           }
         }
-      }
-
-      static get observers() {
-        return [
-          '_ctrlStarsVotes(charla.Id)'
-        ];
       }
 
       constructor() {
@@ -231,29 +225,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         });
       }
 
-      _ctrlStarsVotes(charlaId) {
-        Polymer.RenderStatus.afterNextRender(this, function(){
-          var starsRating = this.root.querySelector('cvitaede-starsrating');
-          if (starsRating) {
-            starsRating.addEventListener('click', this._voteAndNext);
-          }
-        });
+      _voteAndNext(e, detail) {
+        if (detail.value && detail.value !== this.myVotes[this.charlaId]) {
+          this.myVotes[this.charlaId] = detail.value;
+          // TODO: UPDATE VOTO CHARLA
+          var updates = {};
+          var email = this.user.email.replace(/[@\.]/g,"_");
+          updates['/pre-charlas/' + email + '/' + this.charlaId] = detail.value;
+          firebase.database().ref().update(updates);
+          // Next Charla
+          this.next();
+        }
       }
 
-      _voteAndNext(e) {
-        var starsRating = e.target;
-        starsRating.removeEventListener('click', this._voteAndNext);
-        // TODO: UPDATE VOTO CHARLA
-        var updates = {};
-        var email = this.user.email.replace(/[@\.]/g,"_");
-        updates['/pre-charlas/' + email + '/' + this.charlaId] = starsRating.rating;
-        firebase.database().ref().update(updates);
-        // Next Charla
-        Polymer.RenderStatus.afterNextRender(this, function(){
-          this.myVotes[this.charlaId] = starsRating.rating;
-          this.next();
-        });
-      }
       _calcVotes() {
         var email = this.user.email.replace(/[@\.]/g,"_");
         firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
