@@ -109,6 +109,7 @@
         <template is="dom-if" if="[[user]]">
           <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
             <a name="vote" href="/vote">Vote</a>
+            <a name="summary" href="/summary">Summary</a>
             <a name="results" href="/results">Results</a>
           </iron-selector>
         </template>
@@ -129,10 +130,12 @@
         <iron-pages
             selected="[[page]]"
             attr-for-selected="name"
+            selected-attribute="selected"
             fallback-selection="view404"
             role="main">
-          <my-view1 name="vote" user="{{user}}"></my-view1>
+          <my-view1 name="vote" user="{{user}}" route="{{subroute}}"></my-view1>
           <my-view2 name="results"></my-view2>
+          <vote-summary name="summary" user="{{user}}"></vote-summary>
           <div name="signout">
             <p>Es necesario identificarse con un correo electronico para poder acceder a la votación del Codemotion 2017</p>
             <p>Para que los votos se contabilicen es necesario votar las 514 charlar propuestas</p>
@@ -183,8 +186,7 @@
 
       _routePageChanged(page) {
         if (page === undefined) {
-          console.log('page undefined');
-          return;
+          return this.set('route.path', '/');
         }
         if (this.user) {
           this.page = page || 'vote';
@@ -198,6 +200,7 @@
 
       _pageChanged(page) {
         if (page === 'signout') return;
+        this.set('routeData.page', page);
         var resolvedPageUrl = this.resolveUrl(page + '.html');
         Polymer.importHref(
             resolvedPageUrl,

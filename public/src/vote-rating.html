@@ -1,0 +1,111 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+
+<dom-module id="vote-rating">
+  <template>
+    <style>
+      :host(:not([hidden])) {
+        display: block;
+      }
+      paper-spinner-lite {
+        position: absolute;
+        top: 80px;
+        left: 50%;
+      }
+      .autor {
+        color: var(--app-secondary-color);
+      }
+      .flexlayer {
+        display:flex;
+        justify-content: center;
+        }
+      .flexlayer > * {
+        align-self: center;
+      }
+
+      .charladesc {
+        overflow: auto;
+        min-height: 200px;
+      }
+      paper-icon-button {
+        background-color: var(--app-secondary-color);
+        color: white;
+        margin: 1em;
+        border-radius: 50%;
+      }
+      paper-icon-button:hover {
+        background-color: var(--app-primary-color);
+      }
+      paper-icon-button[disabled] {
+        opacity: 0.3;
+      }
+
+      cvitaede-starsrating {
+        --star-color: var(--app-secondary-color);
+      }
+    </style>
+
+    <paper-spinner-lite alt="Cargando charla" active="[[!charla.Titulo]]"></paper-spinner-lite>
+    <div class="flexlayer">
+      <paper-icon-button on-tap="prev" disabled$="[[_prevDisabled(talkNumber, total)]]" raised icon="my-icons:chevron-left"></paper-icon-button>
+      <div>Charla [[talkNumber]] de [[total]]</div>
+      <paper-icon-button on-tap="next" disabled$="[[_nextDisabled(talkNumber, total)]]" raised icon="my-icons:chevron-right"></paper-icon-button>
+    </div>
+    <div class="flexlayer">
+      <div class="flex1">Tu voto:</div>
+      <cvitaede-starsrating num-stars="5" mode="manual" rating="{{rating}}"></cvitaede-starsrating>
+    </div>
+    <h3>{{charla.Titulo}} <span>de</span> <span class="autor">{{charla.Autor}}</span></h3>
+    <h6>
+      Tipo: <span class="autor">{{charla.Proposal_format}}</span>
+      Lenguajes: <span class="autor">{{charla.Programming_language}}</span>
+      Nivel: <span class="autor">{{charla.Level}}</span>
+    </h6>
+    <marked-element class="charladesc" markdown="[[charla.Descripcion]]">
+      <div slot="markdown-html"></div>
+    </marked-element>
+  </template>
+  <script>
+    class VoteRating extends Polymer.Element {
+      static get is() { return 'vote-rating'; }
+      static get properties() {
+        return {
+          current:  {
+            type: Number,
+            notify: true
+          },
+          talkNumber: {
+            type: Number,
+            computed: '_computeTalkNumber(current)'
+          },
+          total: Number,
+          rating: {
+            type: Number,
+            notify: true
+          },
+          charla: Object
+        };
+      }
+      _computeTalkNumber(current) {
+        return +current + 1;
+      }
+
+      _prevDisabled(talkNumber, total) {
+        return talkNumber <= 1;
+      }
+
+      _nextDisabled(talkNumber, total) {
+        return talkNumber >= total;
+      }
+
+      prev() {
+        this.current--;
+      }
+
+      next() {
+        this.current++;
+      }
+    }
+
+    window.customElements.define(VoteRating.is, VoteRating);
+  </script>
+</dom-module>

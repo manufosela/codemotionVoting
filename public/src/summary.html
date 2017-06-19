@@ -1,0 +1,186 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-query.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-document.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid-column-group.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid-sorter.html">
+<link rel="import" href="../bower_components/vaadin-grid/vaadin-grid-filter.html">
+
+<dom-module id="vote-summary">
+  <template>
+    <style>
+      :host(:not([hidden])) {
+        display: block;
+        padding: 1em;
+      }
+      paper-spinner-lite {
+        position: absolute;
+        top: 200px;
+        left: calc(50% - 50px);
+      }
+      vaadin-grid {
+        height: calc(100vh - 190px);
+      }
+      /* Zebra striping */
+      vaadin-grid {
+        --vaadin-grid-cell: {
+
+        };
+        --vaadin-grid-header-cell: {
+          height: 64px;
+          color: rgba(0, 0, 0, var(--dark-secondary-opacity));
+          font-size: 12px;
+        };
+        --vaadin-grid-body-row-odd-cell: {
+          background-color: #f5f5f5;
+        };
+        --vaadin-grid-body-row-hover-cell: {
+          background-color: var(--paper-grey-200);
+        };
+      }
+
+      .details-cell {
+        white-space: normal;
+        padding: 1em;
+        overflow: auto;
+      }
+      .autor {
+        color: var(--app-secondary-color);
+      }
+    </style>
+
+    <firebase-query
+      path="/charlas"
+      data="{{charlas}}">
+    </firebase-query>
+
+    <firebase-document
+      path="/pre-charlas/[[_emailSlug(user.email)]]"
+      data="{{myVotes}}">
+    </firebase-document>
+
+    <dom-if if="[[_readyToConfirm(myVotes, votesLeft)]]">
+      <template>
+        <paper-button raised disabled="[[confirming]]" on-click="_calcVotes">Confirmar votaciones</paper-button>
+      </template>
+    </dom-if>
+
+    <dom-if if="[[!myVotes.length]]">
+      <template>
+        <h3>Tus votos han sido contabilizados. Muchas gracias por colaborar.</h3>
+      </template>
+    </dom-if>
+    <dom-if if="[[myVotes.length]]">
+      <template>
+        <h3>Te quedan por votar [[votesLeft.length]] charlas.</h3>
+        <paper-spinner-lite alt="Cargando charlas" active="[[!charlas.length]]"></paper-spinner-lite>
+        <vaadin-grid id="results" aria-label="Sorting Example" items="[[charlas]]">
+          <vaadin-grid-column-group frozen resizable>
+            <vaadin-grid-column width="50px" flex-grow="0">
+              <template class="header">#</template>
+              <template>
+                <a href="/vote/[[_getCharlaNum(index)]]">[[_getCharlaNum(index)]]</a>
+              </template>
+            </vaadin-grid-column>
+          </vaadin-grid-column-group>
+
+          <vaadin-grid-column-group resizable>
+            <vaadin-grid-column width="300px">
+              <template class="header">Titulo</template>
+              <template>[[item.Titulo]]</template>
+            </vaadin-grid-column>
+
+            <vaadin-grid-column width="100px" flex-grow="0">
+              <template class="header">Mi voto</template>
+              <template>[[myVote(myVotes, index)]]</template>
+            </vaadin-grid-column>
+          </vaadin-grid-column-group>
+        </vaadin-grid>
+      </template>
+    </dom-if>
+  </template>
+  <script>
+    class VoteSummary extends Polymer.Element {
+      static get is() { return 'vote-summary'; }
+      static get properties() {
+        return {
+          user: Object,
+          charlas: Array,
+          myVotes: Array,
+          votesLeft: {
+            type: Array,
+            computed: '_computeVotesLeft(myVotes.splices)'
+          }
+        };
+      }
+
+      myVote(votes, index) {
+        return votes[index];
+      }
+
+      _getCharlaNum(charlaId) {
+        return charlaId + 1;
+      }
+
+      _computeVotesLeft(changes) {
+        if (changes) {
+          return myVotes
+            .map((item, index) => item === 0 ? index : null)
+            .filter((item, index) => item !== null);
+        } else {
+          return [];
+        }
+      }
+
+      _emailSlug(email) {
+        return email.replace(/[@\.]/g,"_");
+      }
+
+      _readyToConfirm(myVotes, votesLeft) {
+        return myVotes.length && !votesLeft.length;
+      }
+
+      _calcVotes() {
+        this.confirming = true;
+        var email = this._emailSlug(this.user.email);
+        firebase.database().ref().child('charlas').once('value').then( (snapshot) => {
+          var charlas = snapshot.val();
+          if (!this.votesLeft.length) {
+            firebase.database().ref().child('pre-charlas/' + email).once('value').then( (snapshot) => {
+              var preCharlas =snapshot.val();
+              if (preCharlas && preCharlas.length===charlas.length) {
+                for(var k in charlas) {
+                  if (preCharlas[k]>0 && preCharlas[k]<6) {
+                    charlas[k].Votos += preCharlas[k];
+                  } else {
+                    this.votesSaved = false;
+                    this.votesError = true;
+                    return;
+                  }
+                }
+                var updates = {};
+                updates['/charlas'] = charlas;
+                firebase.database().ref().update(updates).then( ()=> {
+                  firebase.database().ref('/pre-charlas/').child(email).once('value').then( (snapshot) => {
+                    var preCharlas = snapshot.val();
+                    firebase.database().ref('/users-voted/' + email).set(preCharlas);
+                    firebase.database().ref('/pre-charlas/' + email).remove();
+                    this.votesSaved = true;
+                    this.votesError = false;
+                  });
+                });
+              } else {
+                this.votesSaved = false;
+                this.votesError = true;
+              }
+            });
+          }
+        });
+      }
+    }
+
+    window.customElements.define(VoteSummary.is, VoteSummary);
+  </script>
+</dom-module>
